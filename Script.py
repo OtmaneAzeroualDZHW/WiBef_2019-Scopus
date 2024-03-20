@@ -16,8 +16,8 @@ def get_publications_for_author(author_name):
     wibef_publications = get_wibef_publications(author_name)
     scopus_publications = get_scopus_publications(author_name)
     
-    # Hier können Sie die erhaltenen Publikationsdaten weiter verarbeiten oder kombinieren
-    # Zum Beispiel können Sie Duplikate entfernen oder die Daten zusammenführen
+    # Hier kann man die erhaltenen Publikationsdaten weiter verarbeiten oder kombinieren
+    # Zum Beispiel kann man Duplikate entfernen oder die Daten zusammenführen
     
     return wibef_publications, scopus_publications
 
