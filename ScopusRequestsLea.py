@@ -1,9 +1,9 @@
 import pandas as pd
 import requests
 import json
-
+import Key # file that stores API Key
 # static variables are defined here
-api_key = '34e76d186db66dc6bf09dfd29c293707'
+
 header = {'X-ELS-APIKey': api_key}
 df = pd.read_csv('survbib-data_extract200.csv', sep=';',)
 #adding empty columns for scopus titles
