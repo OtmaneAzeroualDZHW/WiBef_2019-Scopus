@@ -5,7 +5,7 @@ import Key # file that stores API Key
 # static variables are defined here
 
 header = {'X-ELS-APIKey': api_key}
-df = pd.read_csv('survbib-data_extract200.csv', sep=';',)
+df = pd.read_csv(<file>, sep=';',)
 #adding empty columns for scopus titles
 df['ScopusTitles'] = ''
 
