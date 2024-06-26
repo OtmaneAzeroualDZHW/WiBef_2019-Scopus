@@ -33,35 +33,41 @@ def seperate_uni_name_from_alias(uni):
         return uni, None
 
 # function to get the author id from their first and last name
-def get_au_id(lstnm,frstnm,uni):
+def clean_author_id(au_id):
+    p = r'^AUTHOR_ID:'
+    clean = re.sub(p, '', au_id)
+    print(clean)
+    return clean
 
+
+# function to get the author id from their first and last name
+def get_au_id(lstnm, frstnm, uni):
     u = fix_university_name(uni)
     u, alias = seperate_uni_name_from_alias(u)
     # using full name + institution to avoid duplicates by other authors with identical names
     if alias == None:
-        query_str = 'AUTHLASTNAME('+lstnm+') AND AUTHFIRST('+frstnm+') AND AFFIL('+u+')'
+        query_str = 'AUTHLASTNAME(' + lstnm + ') AND AUTHFIRST(' + frstnm + ') AND AFFIL(' + u + ')'
     else:
-        query_str = 'AUTHLASTNAME('+lstnm+') AND AUTHFIRST('+frstnm+') AND AFFIL('+u+' OR '+alias+')'
-        print('query_str: ', query_str)
-    par_author = {'query': query_str, 'count': 200}
+        query_str = 'AUTHLASTNAME(' + lstnm + ') AND AUTHFIRST(' + frstnm + ') AND AFFIL(' + u + ' OR ' + alias + ')'
+
+    par_author = {'query': query_str, 'count': 200, 'fields': 'dc:identifier, document-count'}
+    time.sleep(0.1666666)
     r = requests.get(url=author_url, headers=header, params=par_author)
 
-
     response = r.json()
-    print('author response json created')
+    #print('author response json created', json.dumps(response, indent=4))
+
     if 'search-results' not in response.keys():
-        print('funky error:',json.dumps(response, indent=4))
+        print('funky error:', json.dumps(response, indent=4))
         print('related query string:', query_str)
-        return 0
+        return 0,0
     if 'error' in response['search-results']['entry'][0].keys():
-        print('empty author response for', frstnm, lstnm)
-        return 0
-    # TODO Aus mehreren Autoren den richtigen finden
-    entry = pd.json_normalize(response['search-results']['entry'])
-    au_id = str(entry['dc:identifier'])
-    au_id = au_id[15:26]
-    print(au_id)
-    return au_id
+        print('empty author response for', query_str)
+        return 0,0
+
+    au_id = clean_author_id(response['search-results']['entry'][0]['dc:identifier'])
+    dc_count = response['search-results']['entry'][0]['document-count']
+    return au_id, dc_count
 
 
 
@@ -69,25 +75,60 @@ def get_au_id(lstnm,frstnm,uni):
 
 
 
-def get_scopus_publications(au_id):
+def get_scopus_publications(au_id, dc_count, lstn,frstn):
     q_str = 'AU-ID('+au_id+')'
-    par_titles = {'query': q_str, 'count': 200}
+    par_titles = {'query': q_str, 'count': 200, 'start':0}
     title_request = requests.get(scopus_url, headers=header, params=par_titles)
 
+    time.sleep(0.3333)
     title_response = title_request.json()
     print('title response json created')
     if 'search-results' not in title_response.keys():
-        print('funky error:',json.dumps(title_response, indent=4))
+        print('funky error with title response:',json.dumps(title_response, indent=4))
         print('related query:', q_str)
         return 0
     if 'error' in title_response['search-results']['entry'][0].keys():
-        print('empty title response for ', au_id)
+        print('empty title response for ', au_id, lstn, frstn)
         return 0
     entries = pd.json_normalize(title_response['search-results']['entry'])
 
     lst = entries['dc:title'].tolist()
-    list_of_title_lsts.append(lst)
-    print(lst)
+    if len(lst) == int(dc_count):
+        print('i think my list is complete')
+        list_of_title_lsts.append(lst)
+    else:
+        print('starting loop to look for more publications')
+        print('looking for '+dc_count+'publications in total')
+        i=1
+        while len(lst) < int(dc_count):
+            par_titles['start'] = len(lst)
+            time.sleep(0.3333)
+            tr = requests.get(scopus_url, headers=header, params=par_titles)
+            r = tr.json()
+            if 'search-results' not in title_response.keys():
+                print('funky error with title response in while loop:', json.dumps(title_response, indent=4),len(lst), dc_count)
+                print('related query:', q_str)
+                return 0
+            if 'error' in title_response['search-results']['entry'][0].keys():
+                print('empty title response for in while loop', au_id, len(lst), dc_count ,lstn, frstn)
+                return 0
+            e = pd.json_normalize(r['search-results']['entry'])
+
+            #lst.extend(e['dc:title'].tolist())
+            for title in e['dc:title'].tolist():
+                if title not in lst:
+                    lst.append(title)
+
+            #print('list at len',len(lst))
+            #print('step', i)
+            #print(lst)
+            i+=1
+            if len(e['dc:title'].tolist()) < 200:
+                list_of_title_lsts.append(lst)
+                break
+
+
+    #print(lst)
     return lst
 
 
@@ -95,13 +136,13 @@ def get_scopus_publications(au_id):
 for i, row in df.iterrows():
     # first use Scopus Author Search to retrive Author_IDs for correct identification of papers
 
-    au_id = get_au_id(row['nachname'],frstnm = row['vorname'], uni=row['uni'])
+    au_id, dc_count = get_au_id(row['nachname'],frstnm = row['vorname'], uni=row['uni'])
     if au_id == 0:
         continue
-    title_list = get_scopus_publications(au_id)
+    title_list = get_scopus_publications(au_id, dc_count,lstn= row['nachname'],frstn = row['vorname'])
     if title_list == 0:
         continue
 
-df.insert(column='scopus titles',value=pd.Series(list_of_title_lsts))
+df.insert(loc = 11,column='scopus titles',value=pd.Series(list_of_title_lsts))
 
 df.to_csv('test.csv', sep=';')
