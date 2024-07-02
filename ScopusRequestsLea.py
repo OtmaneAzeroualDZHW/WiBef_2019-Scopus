@@ -1,13 +1,13 @@
 import pandas as pd
 import requests
 import json
-
+import re
+import time
 # static variables are defined here
 
 header = {'X-ELS-APIKey': api_key}
 df = pd.read_csv('survbib-data_extract200.csv', sep=';',)
-#adding empty columns for scopus titles
-#df['ScopusTitles'] = ''
+
 list_of_title_lsts = []
 
 author_url = 'https://api.elsevier.com/content/search/author'
@@ -16,8 +16,10 @@ scopus_url = 'https://api.elsevier.com/content/search/scopus'
 
 def fix_university_name(uni):
     p = fr'^(U)(\s)'
+    p1 = r'(?<!\S)H\s'
     res = re.sub(p, fr'\1niversität\2', uni)
-    return res
+    fixed = re.sub(p1, r'H' + 'ochschule', res)
+    return fixed
 
 def seperate_uni_name_from_alias(uni):
 
