@@ -6,26 +6,33 @@ import time
 # static variables are defined here
 
 api_key # = <insert your api key here>
+
+
+auth_token = get_authToken(api_key)
 header = {'X-ELS-APIKey': api_key}
-df = pd.read_csv('file.csv', sep=';',)
+df = pd.read_csv('survbib-data_extract200.csv', sep=';',)
 
 list_of_title_lsts = []
+rejects = pd.DataFrame(columns= ['Vorname', 'Nachname', 'Uni', 'Alias'])
 
 author_url = 'https://api.elsevier.com/content/search/author'
 scopus_url = 'https://api.elsevier.com/content/search/scopus'
+
 
 
 def fix_university_name(uni):
     p = fr'^(U)(\s)'
     p1 = r'(?<!\S)H\s'
     res = re.sub(p, fr'\1niversität\2', uni)
-    fixed = re.sub(p1, r'H' + 'ochschule', res)
+    fixed = re.sub(p1, r'H'+'ochschule', res)
+    print(fixed)
     return fixed
 
 def seperate_uni_name_from_alias(uni):
+
     p = r'\(([^)]+)\)'
+
     m = re.search(p, uni)
-    print('match: ', m)
     if m:
         alias = m.group(1)
         uni_cleaned = re.sub(p, '', uni)
@@ -37,7 +44,6 @@ def seperate_uni_name_from_alias(uni):
 def clean_author_id(au_id):
     p = r'^AUTHOR_ID:'
     clean = re.sub(p, '', au_id)
-    print(clean)
     return clean
 
 
@@ -63,6 +69,8 @@ def get_au_id(lstnm, frstnm, uni):
         print('related query string:', query_str)
         return 0,0
     if 'error' in response['search-results']['entry'][0].keys():
+        tmp = {'Vorname': frstnm, 'Nachname': lstnm, 'Uni': u, 'Alias': alias}
+        rejects.loc[len(rejects)] = tmp
         print('empty author response for', query_str)
         return 0,0
 
@@ -72,16 +80,19 @@ def get_au_id(lstnm, frstnm, uni):
 
 
 
+
+
+
+
 def get_scopus_publications(au_id, dc_count):
     q_str = 'AU-ID('+au_id+')'
-    par_titles = {'query': q_str, 'count': 200, 'start': 0}
+    par_titles = {'query': q_str, 'count': 200, 'start':0}
     title_request = requests.get(scopus_url, headers=header, params=par_titles)
 
     time.sleep(0.3333)
     title_response = title_request.json()
-    print('title response json created')
     if 'search-results' not in title_response.keys():
-        print('funky error with title response:', json.dumps(title_response, indent=4))
+        print('funky error with title response:',json.dumps(title_response, indent=4))
         print('related query:', q_str)
         return 0
     if 'error' in title_response['search-results']['entry'][0].keys():
@@ -90,7 +101,10 @@ def get_scopus_publications(au_id, dc_count):
     entries = pd.json_normalize(title_response['search-results']['entry'])
 
     lst = entries['dc:title'].tolist()
+    print('expected document count: ', dc_count)
+    print('list len: ', len(lst))
     if len(lst) == int(dc_count):
+
         list_of_title_lsts.append(lst)
     else:
         print('starting loop to look for more publications')
@@ -109,14 +123,22 @@ def get_scopus_publications(au_id, dc_count):
                 print('empty title response for in while loop', au_id, len(lst), dc_count)
                 return 0
             e = pd.json_normalize(r['search-results']['entry'])
+
+            #lst.extend(e['dc:title'].tolist())
             for title in e['dc:title'].tolist():
                 if title not in lst:
                     lst.append(title)
+
+            #print('list at len',len(lst))
+            #print('step', i)
+            #print(lst)
             i+=1
             if len(e['dc:title'].tolist()) < 200:
                 list_of_title_lsts.append(lst)
                 break
 
+
+    #print(lst)
     return lst
 
 
@@ -127,10 +149,11 @@ for i, row in df.iterrows():
     au_id, dc_count = get_au_id(row['nachname'],frstnm = row['vorname'], uni=row['uni'])
     if au_id == 0:
         continue
-    title_list = get_scopus_publications(au_id, dc_count,lstn= row['nachname'],frstn = row['vorname'])
+    title_list = get_scopus_publications(au_id, dc_count)
     if title_list == 0:
         continue
 
-df.insert(loc=len(df), column='scopus titles', value=pd.Series(list_of_title_lsts))
+df.insert(loc = 11,column='scopus titles',value=pd.Series(list_of_title_lsts))
 
-df.to_csv('authors_scopus_publications.csv', sep=';')
+df.to_csv('test.csv', sep=';')
+rejects.to_csv('rejects_neu.csv', sep=';')
