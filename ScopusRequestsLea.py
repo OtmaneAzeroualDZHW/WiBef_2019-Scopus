@@ -133,4 +133,4 @@ for i, row in df.iterrows():
 
 df.insert(loc=len(df), column='scopus titles', value=pd.Series(list_of_title_lsts))
 
-df.to_csv('test.csv', sep=';')
+df.to_csv('authors_scopus_publications.csv', sep=';')
