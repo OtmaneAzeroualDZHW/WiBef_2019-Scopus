@@ -84,8 +84,8 @@ def get_au_id(lstnm, frstnm, uni):
 
 
 
-def get_scopus_publications(au_id, dc_count):
-    q_str = 'AU-ID('+au_id+')'
+def get_scopus_publications(au_id, dc_count, row):
+    q_str = 'AU-ID('+str(au_id)+')'
     par_titles = {'query': q_str, 'count': 200, 'start':0}
     title_request = requests.get(scopus_url, headers=header, params=par_titles)
 
@@ -94,52 +94,57 @@ def get_scopus_publications(au_id, dc_count):
     if 'search-results' not in title_response.keys():
         print('funky error with title response:',json.dumps(title_response, indent=4))
         print('related query:', q_str)
-        return 0
+        return
     if 'error' in title_response['search-results']['entry'][0].keys():
         print('empty title response for ', au_id)
-        return 0
-    entries = pd.json_normalize(title_response['search-results']['entry'])
+        return
 
-    lst = entries['dc:title'].tolist()
+
+
     print('expected document count: ', dc_count)
-    print('list len: ', len(lst))
-    if len(lst) == int(dc_count):
-
-        list_of_title_lsts.append(lst)
+    print('lenght response  ',len(title_response['search-results']['entry']) )
+    if len(title_response['search-results']['entry']) == int(dc_count):
+        for i in title_response['search-results']['entry']:
+            i = {k: v for k, v in i.items() if k not in dump_lst}
+            r = {**row, **i}
+            rslts.loc[len(rslts)] = r
     else:
+        for i in title_response['search-results']['entry']:
+            i = {k: v for k, v in i.items() if k not in dump_lst}
+            r = {**row, **i}
+            rslts.loc[len(rslts)] = r
         print('starting loop to look for more publications')
-        print('looking for '+dc_count+'publications in total')
-        i=1
-        while len(lst) < int(dc_count):
-            par_titles['start'] = len(lst)
+        print('looking for ' + dc_count + ' publications in total')
+        ## for the while loop
+        j = 1
+        ## counter for the found documents
+        found = len(title_response['search-results']['entry'])
+
+        while found < int(dc_count):
+
+            par_titles['start'] = found
             time.sleep(0.3333)
             tr = requests.get(scopus_url, headers=header, params=par_titles)
-            r = tr.json()
-            if 'search-results' not in title_response.keys():
-                print('funky error with title response in while loop:', json.dumps(title_response, indent=4),len(lst), dc_count)
+            res = tr.json()
+            found = found + len(res['search-results']['entry'])
+
+            if 'search-results' not in res.keys():
+                print('funky error with title response in while loop:', json.dumps(r, indent=4), found,
+                      dc_count)
                 print('related query:', q_str)
                 return 0
-            if 'error' in title_response['search-results']['entry'][0].keys():
-                print('empty title response for in while loop', au_id, len(lst), dc_count)
+            if 'error' in res['search-results']['entry'][0].keys():
+                print('empty title response for in while loop', au_id, found, dc_count)
                 return 0
-            e = pd.json_normalize(r['search-results']['entry'])
+            for i in res['search-results']['entry']:
+                i = {k: v for k, v in i.items() if k not in dump_lst}
+                r = {**row, **i}
+                rslts.loc[len(rslts)] = r
 
-            #lst.extend(e['dc:title'].tolist())
-            for title in e['dc:title'].tolist():
-                if title not in lst:
-                    lst.append(title)
-
-            #print('list at len',len(lst))
-            #print('step', i)
-            #print(lst)
-            i+=1
-            if len(e['dc:title'].tolist()) < 200:
-                list_of_title_lsts.append(lst)
-                break
+            j += 1
 
 
-    #print(lst)
-    return lst
+    return
 
 
 
@@ -149,11 +154,14 @@ for i, row in df.iterrows():
     au_id, dc_count = get_au_id(row['nachname'],frstnm = row['vorname'], uni=row['uni'])
     if au_id == 0:
         continue
-    title_list = get_scopus_publications(au_id, dc_count)
+    title_list = get_scopus_publications(au_id, dc_count,row=df.loc[i].to_dict())
     if title_list == 0:
         continue
 
-df.insert(loc = 11,column='scopus titles',value=pd.Series(list_of_title_lsts))
 
-df.to_csv('test.csv', sep=';')
-rejects.to_csv('rejects_neu.csv', sep=';')
+
+rslts.replace(r'^s*$', np.nan, regex=True, inplace=True)
+
+
+rslts.to_csv('BigTest.csv', sep=';')
+rejects.to_csv('AuthorsWithEmptyResp.csv', sep=';')
