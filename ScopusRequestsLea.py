@@ -36,7 +36,7 @@ def clean_author_id(au_id):
 
 
 # function to get the author id from their first and last name
-def get_au_id(row, lstnm, frstnm, uni, header, rejects):
+def get_au_id(row, lstnm, frstnm, uni, header):
     author_url = 'https://api.elsevier.com/content/search/author'
 
     u = fix_university_name(row[uni])
@@ -53,20 +53,14 @@ def get_au_id(row, lstnm, frstnm, uni, header, rejects):
     r = requests.get(url=author_url, headers=header, params=par_author)
 
     response = r.json()
-    #print('author response json created', json.dumps(response, indent=4))
-    # todo: change this to try except
-    if 'search-results' not in response.keys():
-        print('funky error:', json.dumps(response, indent=4))
-        print('related query string:', query_str)
-        return 0,0
-    if 'error' in response['search-results']['entry'][0].keys():
-        # todo fix this
-        #rejects.loc[len(rejects)] = row
-        print('empty author response for', query_str)
-        return 0,0
 
-    au_id = clean_author_id(response['search-results']['entry'][0]['dc:identifier'])
-    dc_count = response['search-results']['entry'][0]['document-count']
+    try:
+        au_id = clean_author_id(response['search-results']['entry'][0]['dc:identifier'])
+        dc_count = response['search-results']['entry'][0]['document-count']
+
+    except KeyError:
+        return KeyError
+
     return au_id, dc_count
 
 
@@ -78,6 +72,7 @@ def get_au_id(row, lstnm, frstnm, uni, header, rejects):
 def get_scopus_publications(rslts,au_id, dc_count, row, header):
     scopus_url = 'https://api.elsevier.com/content/search/scopus'
     au_dic = {'authorID': au_id}
+
 
     dump_lst = ['@_fa', 'link', 'prism:url', 'dc:creator', 'prism:coverDisplayDate', 'affiliation', 'subtype',
                 'source-id', 'openaccess', 'freetoread.value', 'freetoreadLabel.value', 'prism:issueIdentifier',
@@ -93,17 +88,13 @@ def get_scopus_publications(rslts,au_id, dc_count, row, header):
 
         time.sleep(0.3333)
         title_response = title_request.json()
-        if 'search-results' not in title_response.keys():
-            print('funky error with title response:', json.dumps(title_response, indent=4))
-            print('related query:', q_str)
-            return 0
-        if 'error' in title_response['search-results']['entry'][0].keys():
-            print('empty title response for ', au_id)
-            return 0
-        for i in title_response['search-results']['entry']:
-            i = {k: v for k, v in i.items() if k not in dump_lst}
-            r = {**au_dic, **row, **i}
-            rslts.loc[len(rslts)] = r
+        try:
+            for i in title_response['search-results']['entry']:
+                i = {k: v for k, v in i.items() if k not in dump_lst}
+                r = {**au_dic, **row, **i}
+                rslts.loc[len(rslts)] = r
+        except KeyError:
+            return KeyError
     else:
         found = 0
 
@@ -114,25 +105,18 @@ def get_scopus_publications(rslts,au_id, dc_count, row, header):
             tr = requests.get(scopus_url, headers=header, params=par_titles)
             res = tr.json()
 
-
-            if 'search-results' not in res.keys():
-                print('funky error with title response in while loop:', json.dumps(r, indent=4), found,
-                      dc_count)
-                print('related query:', q_str)
-                return 0
-            if 'error' in res['search-results']['entry'][0].keys():
-                print('empty title response for in while loop', au_id, found, dc_count)
-                return 0
-            for i in res['search-results']['entry']:
-                i = {k: v for k, v in i.items() if k not in dump_lst}
-                r = {**au_dic, **row, **i}
-                rslts.loc[len(rslts)] = r
+            try:
+                for i in res['search-results']['entry']:
+                    i = {k: v for k, v in i.items() if k not in dump_lst}
+                    r = {**au_dic, **row, **i}
+                    rslts.loc[len(rslts)] = r
+            except KeyError:
+                return KeyError
 
             found = found + len(res['search-results']['entry'])
             print('currently found ', found, ' documents')
 
 
-    return 1
 def clean_header(col):
 
     pf1 = r'^dc:'
@@ -189,31 +173,33 @@ def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None, seperator
                 'prism:doi', 'citedby-count', 'prism:aggregationType', 'subtypeDescription', 'openaccessFlag',
                 'prism:issn', 'prism:eIssn', 'prism:volume', 'pubmed-id']
 
-    a_id = ['Author ID']
+    a_id = ['authorID']
     # making a dataframe to store results
     col = a_id + orig_head + keep_lst
 
     rslts = pd.DataFrame(columns=col)
 
-    rejects = pd.DataFrame(orig_head)
+    rejects = pd.DataFrame(columns=orig_head)
 
     for i, row in df.iterrows():
         # first use Scopus Author Search to retrive Author_IDs for correct identification of papers
-
-        au_id, dc_count = get_au_id(df.loc[i].to_dict(), lstnm, frstnm, uni, hdr, rejects)
-        if au_id == 0:
+        try:
+            au_id, dc_count = get_au_id(df.loc[i].to_dict(), lstnm, frstnm, uni, hdr)
+        except:
+            rejects = rejects._append(row)
             continue
         # todo fix this function calls because currently the get_scopus_publication only returns on error
-        helper = get_scopus_publications(rslts,au_id, dc_count,df.loc[i].to_dict(),hdr)
-        if helper == 0:
+        try:
+            get_scopus_publications(rslts,au_id, dc_count,df.loc[i].to_dict(),hdr)
+        except KeyError:
             continue
 
     rslts = clean_rslts(rslts=rslts)
 
-    rejects.to_csv('RejectsTestNeu.csv', sep=';')
+    rejects.to_csv('Rejects1208.csv', sep=';', index=False)
 
     return rslts
 
 results = search_scopus()
 
-results.to_csv('TestNeu.csv', sep=';')
+results.to_csv('Test1208.csv', sep=';')
