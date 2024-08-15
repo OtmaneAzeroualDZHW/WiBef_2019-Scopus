@@ -157,7 +157,7 @@ def clean_rslts(rslts):
     return rslts
 
 
-def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None, seperator=',', quotechar='"', line=None):
+def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None,seperator=',', quotechar='"', line=None):
 
     # todo make the inst_tkn argument optional and put it into the header dict if its given
     if inst_tkn != None:
@@ -188,7 +188,7 @@ def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None, seperator
         except:
             rejects = rejects._append(row)
             continue
-        # todo fix this function calls because currently the get_scopus_publication only returns on error
+
         try:
             get_scopus_publications(rslts,au_id, dc_count,df.loc[i].to_dict(),hdr)
         except KeyError:
@@ -196,10 +196,10 @@ def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None, seperator
 
     rslts = clean_rslts(rslts=rslts)
 
-    rejects.to_csv('Rejects1208.csv', sep=';', index=False)
+    #rejects.to_csv('Rejects1208.csv', sep=';', index=False)
 
     return rslts
 
-results = search_scopus()
 
-results.to_csv('Test1208.csv', sep=';')
+
+
