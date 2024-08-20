@@ -157,17 +157,17 @@ def clean_rslts(rslts):
     return rslts
 
 
-def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None,seperator=',', quotechar='"', line=None):
+def search_scopus(api_key,tosearch,rslts,rejects, frstnm, lstnm, uni,inst_tkn=None):
 
-    # todo make the inst_tkn argument optional and put it into the header dict if its given
+
     if inst_tkn != None:
         hdr = {'X-ELS-APIKey': api_key, 'X-ELS-Insttoken': inst_tkn}
     else:
         hdr = {'X-ELS-APIKey': api_key}
 
-    df = pd.read_csv(filepath, sep=seperator, quotechar=quotechar, lineterminator=line)
 
-    orig_head = df.columns.values.tolist()
+
+    orig_head = tosearch.columns.values.tolist()
     # hardcoding fields from the scopus search into a keep and a dump list
     keep_lst = ['dc:identifier', 'eid', 'dc:title', 'prism:publicationName', 'prism:pageRange', 'prism:coverDate',
                 'prism:doi', 'citedby-count', 'prism:aggregationType', 'subtypeDescription', 'openaccessFlag',
@@ -181,16 +181,16 @@ def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None,seperator=
 
     rejects = pd.DataFrame(columns=orig_head)
 
-    for i, row in df.iterrows():
+    for i, row in tosearch.iterrows():
         # first use Scopus Author Search to retrive Author_IDs for correct identification of papers
         try:
-            au_id, dc_count = get_au_id(df.loc[i].to_dict(), lstnm, frstnm, uni, hdr)
+            au_id, dc_count = get_au_id(tosearch.loc[i].to_dict(), lstnm, frstnm, uni, hdr)
         except:
             rejects = rejects._append(row)
             continue
 
         try:
-            get_scopus_publications(rslts,au_id, dc_count,df.loc[i].to_dict(),hdr)
+            get_scopus_publications(rslts,au_id, dc_count,tosearch.loc[i].to_dict(),hdr)
         except KeyError:
             continue
 
@@ -199,6 +199,7 @@ def search_scopus(api_key, filepath, frstnm, lstnm, uni,inst_tkn=None,seperator=
     #rejects.to_csv('Rejects1208.csv', sep=';', index=False)
 
     return rslts
+
 
 
 

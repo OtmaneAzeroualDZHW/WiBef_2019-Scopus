@@ -15,7 +15,36 @@ import tksheet
 class InputFrame(customtkinter.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-        customtkinter.CTkLabel(self,text='Entry Fields planned here' ,fg_color='red').grid(column=0, sticky='ew')
+        #api key entry field
+        self.api_key = customtkinter.CTkEntry(self,placeholder_text='API Key')
+        self.api_key.grid(column=1, row=0)
+        #inst token entry field
+        self.inst_token = customtkinter.CTkEntry(self, placeholder_text='Inst Token')
+        self.inst_token.grid(column=3, row=0)
+
+        #comboboxes for selection of header names
+        #todo configure placeholdertext of lable
+        #todo warn user if input is longer than one char
+        self.sep = customtkinter.CTkEntry(self, placeholder_text='csv seperator')
+        self.sep.grid(column=0,row=1)
+
+        self.linesep = customtkinter.CTkEntry(self,placeholder_text='line seperator')
+        self.linesep.grid(column=2,row=1)
+
+        self.quote = customtkinter.CTkEntry(self, placeholder_text='quote char')
+        self.quote.grid(column=4,row=1)
+
+        self.frstnm = customtkinter.CTkComboBox(self,state='disabled')
+        self.frstnm.grid(column=0, row=2)
+
+        self.lstnm = customtkinter.CTkComboBox(self,state='disabled')
+        self.lstnm.grid(column=2, row=2)
+
+        self.uni = customtkinter.CTkComboBox(self, state='disabled')
+        self.uni.grid(column=4, row=2)
+
+
+
 
 class TableFrame(customtkinter.CTkTabview):
     def __init__(self, master, **kwargs):
@@ -36,9 +65,12 @@ class ButtonFrame(customtkinter.CTkFrame):
         def select_file():
             filetypes = (('csv files', '*.csv'), ('All files', '*.*'))
             file_path = fd.askopenfilename(title='Select File', initialdir='C:\\Users\\userName', filetypes=filetypes)
-            df = pd.read_csv(file_path, sep=';')
-            master.tableFrame.inputSheet.set_sheet_data(df.values.tolist())
-            master.tableFrame.inputSheet.set_header_data(df.columns.tolist(), redraw=True)
+            master.to_search = pd.read_csv(file_path, sep=master.inputFrame.sep.get(), lineterminator=master.inputFrame.linesep.get(),quotechar=master.inputFrame.linesep.get())
+            master.tableFrame.inputSheet.set_sheet_data(master.to_search.values.tolist())
+            master.tableFrame.inputSheet.set_header_data(master.to_search.columns.tolist(), redraw=True)
+            master.inputFrame.frstnm.configure(state='normal', values=master.to_search.columns.tolist())
+            master.inputFrame.lstnm.configure(state='normal', values=master.to_search.columns.tolist())
+            master.inputFrame.uni.configure(state='normal', values=master.to_search.columns.tolist())
 
             #add redraw
 
@@ -54,6 +86,12 @@ class App(customtkinter.CTk):
         self.geometry('720x480')
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
+
+        #dataframes
+
+        self.tosearch = pd.DataFrame()
+        self.results = pd.DataFrame()
+        self.empty = pd.DataFrame()
 
         #widgets
         self.inputFrame = InputFrame(self)
