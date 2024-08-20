@@ -198,7 +198,7 @@ def search_scopus(api_key,tosearch,rslts,rejects, frstnm, lstnm, uni,inst_tkn=No
 
     #rejects.to_csv('Rejects1208.csv', sep=';', index=False)
 
-    return rslts
+    return rslts, rejects
 
 
 

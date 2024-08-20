@@ -5,6 +5,8 @@ from tkinter import filedialog as fd
 from tkinter.messagebox import showinfo
 import customtkinter
 import pandas as pd
+
+import ScopusRequests
 from ScopusRequests import *
 import tksheet
 
@@ -60,12 +62,23 @@ class TableFrame(customtkinter.CTkTabview):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-
+        # tab for displaying input csv
         self.add('input file')
         self.inputSheet = tksheet.Sheet(self.tab('input file'),width=1000)
         self.inputSheet.pack(expand=True)
         self.inputSheet.enable_bindings()
+
+        # tab to display search results
         self.add('search results')
+        self.resultSheet = tksheet.Sheet(self.tab('search results'), width=1000)
+        self.resultSheet.pack(expand=True)
+        self.resultSheet.enable_bindings()
+
+        # tab to display empty results
+        self.add('empty results')
+        self.emptyresSheet = tksheet.Sheet(self.tab('empty results'), width=1000)
+        self.emptyresSheet.pack(expand=True)
+        self.emptyresSheet.enable_bindings()
 
 
 class ButtonFrame(customtkinter.CTkFrame):
@@ -82,10 +95,46 @@ class ButtonFrame(customtkinter.CTkFrame):
             master.inputFrame.lstnm.configure(state='normal', values=master.to_search.columns.tolist())
             master.inputFrame.uni.configure(state='normal', values=master.to_search.columns.tolist())
 
-            #add redraw
+        def start_search():
+            if not master.inputFrame.inst_token.get():
+                master.results, master.empty = ScopusRequests.search_scopus(master.inputFrame.api_key.get(), master.to_search, master.results, master.empty, master.inputFrame.frstnm.get(), master.inputFrame.lstnm.get(), master.inputFrame.uni.get())
+            else:
+                master.results, master.empty = ScopusRequests.search_scopus(master.inputFrame.api_key.get(), master.to_search, master.results,
+                                             master.empty, master.inputFrame.frstnm.get(),
+                                             master.inputFrame.lstnm.get(), master.inputFrame.uni.get(), master.inputFrame.inst_token.get())
+            master.tableFrame.resultSheet.set_header_data(master.results.columns.tolist())
+            master.tableFrame.resultSheet.set_sheet_data(master.results.values.tolist(),redraw=True)
+            master.tableFrame.emptyresSheet.set_header_data(master.empty.columns.tolist())
+            master.tableFrame.emptyresSheet.set_sheet_data(master.empty.values.tolist())
 
+        def save_results():
+            filetypes = [('All types (*.*)', '*.*'),('csv file (*.csv)', ('*.csv'))]
+            filepath = fd.asksaveasfilename(title='Save Results as .csv', initialdir='C:\\Users\\userName', filetypes=filetypes, defaultextension=filetypes)
+            master.results.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], lineterminator=master.inputFrame.linesep_dict[master.inputFrame.linesep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
+            showinfo(title='saved results', message='results saved to csv')
+            #todo find out why it saves funny
+
+        def save_empty():
+            filetps = ('csv files', '*.csv')
+            filepath = fd.asksaveasfilename(title='Save Results as .csv', initialdir='C:\\Users\\userName',
+                                            filetypes=filetps)
+            master.empty.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], lineterminator=master.inputFrame.linesep_dict[master.inputFrame.linesep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
+            showinfo(title='saved empties', message='empty results saved to csv')
+
+        # open file button
         self.open_button = customtkinter.CTkButton(self, text='Select a File', command=select_file)
-        self.open_button.grid(column=0, padx=5, pady=5)
+        self.open_button.grid(column=0)
+
+        # start search button
+        self.search_button = customtkinter.CTkButton(self, text='Start Scopus Search', command=start_search)
+        self.search_button.grid(column=1)
+
+        # save results button
+        self.save_results_button = customtkinter.CTkButton(self, text='Save Search Results', command=save_results)
+        self.save_results_button.grid(column=2)
+
+
+
 
 
 class App(customtkinter.CTk):
