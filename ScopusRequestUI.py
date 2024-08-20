@@ -1,3 +1,4 @@
+import tkinter
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
@@ -22,16 +23,23 @@ class InputFrame(customtkinter.CTkFrame):
         self.inst_token = customtkinter.CTkEntry(self, placeholder_text='Inst Token')
         self.inst_token.grid(column=3, row=0)
 
+
+        #helper dicts for csv parameters
+        self.sep_dict ={'Comma(,)':',','Semicolon (;)':';', 'Tab':'\t','Pipe (|)':'|', 'Colon (:)':':', 'Space': ' ' }
+        self.linesep_dict = {'Newline (\\n)':'\n', 'Carriage Return (\\r)': '\r', 'Carriage Return + Newline (\\r\\n)':'\r\n'}
+        self.quotechar_dict = {'Double Quote (")': '"', "Single Quote (')":"'", 'Backstick (`)':'`'}
+
+
         #comboboxes for selection of header names
         #todo configure placeholdertext of lable
         #todo warn user if input is longer than one char
-        self.sep = customtkinter.CTkEntry(self, placeholder_text='csv seperator')
+        self.sep = customtkinter.CTkOptionMenu(self, values=list(self.sep_dict.keys()))
         self.sep.grid(column=0,row=1)
 
-        self.linesep = customtkinter.CTkEntry(self,placeholder_text='line seperator')
+        self.linesep = customtkinter.CTkOptionMenu(self, values=list(self.linesep_dict.keys()))
         self.linesep.grid(column=2,row=1)
 
-        self.quote = customtkinter.CTkEntry(self, placeholder_text='quote char')
+        self.quote = customtkinter.CTkOptionMenu(self, values=list(self.quotechar_dict.keys()))
         self.quote.grid(column=4,row=1)
 
         self.frstnm = customtkinter.CTkComboBox(self,state='disabled')
@@ -42,6 +50,8 @@ class InputFrame(customtkinter.CTkFrame):
 
         self.uni = customtkinter.CTkComboBox(self, state='disabled')
         self.uni.grid(column=4, row=2)
+
+
 
 
 
@@ -65,7 +75,7 @@ class ButtonFrame(customtkinter.CTkFrame):
         def select_file():
             filetypes = (('csv files', '*.csv'), ('All files', '*.*'))
             file_path = fd.askopenfilename(title='Select File', initialdir='C:\\Users\\userName', filetypes=filetypes)
-            master.to_search = pd.read_csv(file_path, sep=master.inputFrame.sep.get(), lineterminator=master.inputFrame.linesep.get(),quotechar=master.inputFrame.linesep.get())
+            master.to_search = pd.read_csv(file_path, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], lineterminator=master.inputFrame.linesep_dict[master.inputFrame.linesep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
             master.tableFrame.inputSheet.set_sheet_data(master.to_search.values.tolist())
             master.tableFrame.inputSheet.set_header_data(master.to_search.columns.tolist(), redraw=True)
             master.inputFrame.frstnm.configure(state='normal', values=master.to_search.columns.tolist())
