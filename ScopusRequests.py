@@ -157,7 +157,7 @@ def clean_rslts(rslts):
     return rslts
 
 
-def search_scopus(api_key,tosearch,rslts,rejects, frstnm, lstnm, uni,inst_tkn=None):
+def search_scopus(api_key,tosearch,rslts,rejects, frstnm, lstnm, uni,inst_tkn=None, progress_callback=None):
 
 
     if inst_tkn != None:
@@ -180,7 +180,7 @@ def search_scopus(api_key,tosearch,rslts,rejects, frstnm, lstnm, uni,inst_tkn=No
     rslts = pd.DataFrame(columns=col)
 
     rejects = pd.DataFrame(columns=orig_head)
-
+    t = len(tosearch)
     for i, row in tosearch.iterrows():
         # first use Scopus Author Search to retrive Author_IDs for correct identification of papers
         try:
@@ -193,8 +193,9 @@ def search_scopus(api_key,tosearch,rslts,rejects, frstnm, lstnm, uni,inst_tkn=No
             get_scopus_publications(rslts,au_id, dc_count,tosearch.loc[i].to_dict(),hdr)
         except KeyError:
             continue
-
-    rslts = clean_rslts(rslts=rslts)
+    if progress_callback:
+        progress_callback(i+1, t)
+    #rslts = clean_rslts(rslts=rslts)
 
     #rejects.to_csv('Rejects1208.csv', sep=';', index=False)
 
