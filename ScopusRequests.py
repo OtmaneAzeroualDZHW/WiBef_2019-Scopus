@@ -13,7 +13,7 @@ def fix_university_name(uni):
     p1 = r'(?<!\S)H\s'
     res = re.sub(p, fr'\1niversität\2', uni)
     fixed = re.sub(p1, r'H'+'ochschule', res)
-    print(fixed)
+
     return fixed
 
 def seperate_uni_name_from_alias(uni):
@@ -53,6 +53,8 @@ def get_au_id(row, lstnm, frstnm, uni, header):
     r = requests.get(url=author_url, headers=header, params=par_author)
 
     response = r.json()
+    print('author url response')
+    print(json.dumps(response, indent=4))
 
     try:
         au_id = clean_author_id(response['search-results']['entry'][0]['dc:identifier'])
