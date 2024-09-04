@@ -11,24 +11,47 @@ from ScopusRequests import *
 import tksheet
 
 
-#todo: add start search button
-#todo add third tab for rejects
-#todo add tables for second and third tab
-#todo make widget scaling dynamic to widowsize?
+class App(customtkinter.CTk):
+    def __init__(self):
+        super().__init__()
+        #appframe
+        self.title('testing class based approach and pandastable')
+        self.geometry(f"{1100}x{580}")
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_columnconfigure((2,3), weight=1)
+        self.grid_rowconfigure((0,1,2), weight=1)
+
+        #dataframes
+
+        self.tosearch = pd.DataFrame()
+        self.results = pd.DataFrame()
+        self.empty = pd.DataFrame()
+
+        #widgets
+        self.inputFrame = InputFrame(self)
+        self.inputFrame.grid(row=0, column=0, rowspan=3)
+
+        self.tableFrame = TableFrame(self, width=710)
+        self.tableFrame.grid(row=0, column=1)
+
+        self.buttonFrame = ButtonFrame(self)
+        self.buttonFrame.grid(row=2, column=0, columnspan=3)
+
+
 class InputFrame(customtkinter.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
         #api key entry field
         self.api_key = customtkinter.CTkEntry(self,placeholder_text='API Key')
-        self.api_key.grid(column=1, row=0)
+        self.api_key.grid(column=0, row=0)
         #inst token entry field
         self.inst_token = customtkinter.CTkEntry(self, placeholder_text='Inst Token')
-        self.inst_token.grid(column=3, row=0)
+        self.inst_token.grid(column=0, row=2)
 
 
         #helper dicts for csv parameters
         self.sep_dict ={'Comma(,)':',','Semicolon (;)':';', 'Tab':'\t','Pipe (|)':'|', 'Colon (:)':':', 'Space': ' ' }
-        self.linesep_dict = {'Newline (\\n)':'\n', 'Carriage Return (\\r)': '\r', 'Carriage Return + Newline (\\r\\n)':'\r\n'}
+
         self.quotechar_dict = {'Double Quote (")': '"', "Single Quote (')":"'", 'Backstick (`)':'`'}
 
 
@@ -36,22 +59,22 @@ class InputFrame(customtkinter.CTkFrame):
         #todo configure placeholdertext of lable
         #todo warn user if input is longer than one char
         self.sep = customtkinter.CTkOptionMenu(self, values=list(self.sep_dict.keys()))
-        self.sep.grid(column=0,row=1)
+        self.sep.grid(column=0,row=4)
 
-        self.linesep = customtkinter.CTkOptionMenu(self, values=list(self.linesep_dict.keys()))
-        self.linesep.grid(column=2,row=1)
+
+
 
         self.quote = customtkinter.CTkOptionMenu(self, values=list(self.quotechar_dict.keys()))
-        self.quote.grid(column=4,row=1)
+        self.quote.grid(column=0,row=6)
 
         self.frstnm = customtkinter.CTkComboBox(self,state='disabled')
-        self.frstnm.grid(column=0, row=2)
+        self.frstnm.grid(column=0, row=8)
 
         self.lstnm = customtkinter.CTkComboBox(self,state='disabled')
-        self.lstnm.grid(column=2, row=2)
+        self.lstnm.grid(column=0, row=10)
 
         self.uni = customtkinter.CTkComboBox(self, state='disabled')
-        self.uni.grid(column=4, row=2)
+        self.uni.grid(column=0, row=12)
 
 
 
@@ -88,7 +111,7 @@ class ButtonFrame(customtkinter.CTkFrame):
         def select_file():
             filetypes = (('csv files', '*.csv'), ('All files', '*.*'))
             file_path = fd.askopenfilename(title='Select File', initialdir='C:\\Users\\userName', filetypes=filetypes)
-            master.to_search = pd.read_csv(file_path, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], lineterminator=master.inputFrame.linesep_dict[master.inputFrame.linesep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
+            master.to_search = pd.read_csv(file_path, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
             master.tableFrame.inputSheet.set_sheet_data(master.to_search.values.tolist())
             master.tableFrame.inputSheet.set_header_data(master.to_search.columns.tolist(), redraw=True)
             master.inputFrame.frstnm.configure(state='normal', values=master.to_search.columns.tolist())
@@ -110,7 +133,7 @@ class ButtonFrame(customtkinter.CTkFrame):
         def save_results():
             filetypes = [('All types (*.*)', '*.*'),('csv file (*.csv)', ('*.csv'))]
             filepath = fd.asksaveasfilename(title='Save Results as .csv', initialdir='C:\\Users\\userName', filetypes=filetypes, defaultextension=filetypes)
-            master.results.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], lineterminator=master.inputFrame.linesep_dict[master.inputFrame.linesep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
+            master.results.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()],  quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
             showinfo(title='saved results', message='results saved to csv')
             #todo find out why it saves funny
 
@@ -118,49 +141,29 @@ class ButtonFrame(customtkinter.CTkFrame):
             filetps = ('csv files', '*.csv')
             filepath = fd.asksaveasfilename(title='Save Results as .csv', initialdir='C:\\Users\\userName',
                                             filetypes=filetps)
-            master.empty.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()], lineterminator=master.inputFrame.linesep_dict[master.inputFrame.linesep.get()], quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
+            master.empty.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()],  quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
             showinfo(title='saved empties', message='empty results saved to csv')
 
         # open file button
         self.open_button = customtkinter.CTkButton(self, text='Select a File', command=select_file)
-        self.open_button.grid(column=0)
+        self.open_button.grid(column=0, row=0)
 
         # start search button
         self.search_button = customtkinter.CTkButton(self, text='Start Scopus Search', command=start_search)
-        self.search_button.grid(column=1)
+        self.search_button.grid(column=1,row=0)
 
         # save results button
         self.save_results_button = customtkinter.CTkButton(self, text='Save Search Results', command=save_results)
-        self.save_results_button.grid(column=2)
+        self.save_results_button.grid(column=2,row=0)
+
+        self.save_empties_button = customtkinter.CTkButton(self, text= 'Save Empty Searches', command=save_empty)
+        self.save_empties_button.grid(column=3, row=0)
 
 
 
 
 
-class App(customtkinter.CTk):
-    def __init__(self):
-        super().__init__()
-        #appframe
-        self.title('testing class based approach and pandastable')
-        self.geometry('720x480')
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
 
-        #dataframes
-
-        self.tosearch = pd.DataFrame()
-        self.results = pd.DataFrame()
-        self.empty = pd.DataFrame()
-
-        #widgets
-        self.inputFrame = InputFrame(self)
-        self.inputFrame.grid(row=0, column=0)
-
-        self.tableFrame = TableFrame(self, width=710)
-        self.tableFrame.grid(row=1, column=0)
-
-        self.buttonFrame = ButtonFrame(self)
-        self.buttonFrame.grid(row=2, column=0)
 
 
 
