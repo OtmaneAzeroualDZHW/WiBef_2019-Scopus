@@ -138,7 +138,7 @@ class ButtonFrame(customtkinter.CTkFrame):
             #todo find out why it saves funny
 
         def save_empty():
-            filetps = ('csv files', '*.csv')
+            filetps = [('All types (*.*)', '*.*'),('csv file (*.csv)', ('*.csv'))]
             filepath = fd.asksaveasfilename(title='Save Results as .csv', initialdir='C:\\Users\\userName',
                                             filetypes=filetps)
             master.empty.to_csv(filepath, sep=master.inputFrame.sep_dict[master.inputFrame.sep.get()],  quotechar=master.inputFrame.quotechar_dict[master.inputFrame.quote.get()])
